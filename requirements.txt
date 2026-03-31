@@ -1,0 +1,12 @@
+yfinance
+pandas
+psycopg2-binary
+sqlalchemy
+python-dotenv
+apscheduler
+ollama
+fastapi
+uvicorn
+flake8
+pytest
+black

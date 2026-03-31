@@ -1,3 +1,6 @@
+black : python 的自動排版工具
+    -> black folder/
+
 on : 什麼時候觸發
 jobs : 執行哪些工作
 
