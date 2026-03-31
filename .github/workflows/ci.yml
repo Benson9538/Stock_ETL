@@ -1,47 +1,35 @@
 
 name: CI
 
-# 什麼時候觸發
 on:
     push:
         branches: [ main ]
     pull_request:
         branches: [ main ]
 
-# 執行哪些工作
 jobs:
     test:
-        # 在哪個環境執行
         runs-on: ubuntu-latest
 
-        # 步驟
         steps:
-            # 取得程式碼
             - name: Checkout code
-            # 使用現成的 Action
-            # Github Actions 在雲端的 VM 執行，一開始是空的
-            # actions/checkout : 把 repository 程式碼載到 VM 裡，後面才能存取檔案
-             uses: actions/checkout@v3
+              uses: actions/checkout@v3
 
-            # 設定 python 環境 
             - name: Set up Python
               uses: actions/setup-python@v4
               with:
                 python-version: '3.12'
 
-            # 安裝套件
             - name: Install dependencies
-            # 執行 shell 指令
-             run: |
+              run: |
                 pip install -r requirements.txt
                 pip install flake8 pytest
 
-            # 程式碼格式檢查 : 縮排錯誤、行太長、多餘空白、未使用 import、語法錯誤
             - name: Run flake8
+
               run: |
                 flake8 etl/ api/ analysis/ --max-line-length=120 --ignore=E501,W503
             
-            # 執行測試
             - name: Run tests
               run: |
                 pytest tests/ -v
