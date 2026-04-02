@@ -17,6 +17,8 @@ TICKER_NAMES = {
     "VT": "Vanguard全球ETF",
 }
 
+ETF_TICKERS = {"0050.TW", "009816.TW", "SPY", "VT"}
+
 OLLAMA_HOST = os.getenv("OLLAMA_HOST")
 
 
@@ -47,6 +49,47 @@ def get_latest_indicators():
 
     return [dict(zip(cols, row)) for row in rows]
 
+def analyze_fundamental(ticker, name):
+    is_etf = ticker in ETF_TICKERS
+
+    if is_etf:
+        prompt = f"""
+你是一位專業的投資分析師，請針對以下 ETF 進行分析。
+請用純繁體中文回答，不要使用任何英文單字。
+
+ETF 名稱：{name}（{ticker}）
+
+請依照以下格式回答，每點不超過三句話：
+
+1. ETF 簡介（追蹤哪個指數，主要成分股是什麼）
+2. 費用率與效率（管理費是否合理，追蹤誤差如何）
+3. 長期報酬（歷史上這個指數的長期年化報酬率）
+4. 主要風險（投資這個 ETF 最大的風險是什麼）
+5. 長期投資建議（適合長期持有、定期定額，還是觀望）
+"""
+    else:
+        prompt = f"""
+你是一位專業的股票分析師，請針對以下股票進行基本面分析。
+請用純繁體中文回答，不要使用任何英文單字。
+
+股票名稱：{name}（{ticker}）
+
+請依照以下格式回答，每點不超過三句話：
+
+1. 財務狀況（過去幾年營收、獲利趨勢是否健康）
+2. 估值分析（目前本益比是否合理，與同業相比是否被高估或低估）
+3. 成長潛力（未來3~5年的成長空間，是否有護城河或競爭優勢）
+4. 主要風險（投資這支股票最大的風險是什麼）
+5. 長期投資建議（適合長期持有、觀望，還是避開）
+"""
+
+    client = ollama.Client(host=OLLAMA_HOST)
+    response = client.generate(
+        model="llama3.2",
+        prompt=prompt,
+        options={"temperature": 0.1}
+    )
+    return response.response
 
 def build_prompt(stock):
     ticker = stock["ticker"]
@@ -140,15 +183,26 @@ def run_analysis():
     report_lines = [f"股票分析報告 - {today}", "=" * 30]
 
     for stock in stocks:
-        print(f"\n {stock['ticker']}")
-        res = analyze(stock)
+        ticker = stock['ticker']
+        name = TICKER_NAMES.get(ticker, ticker)
+        print(f"\n分析 {name}（{ticker}）...")
 
-        save_report(stock["ticker"], res)
+        # 技術面分析
+        technical = analyze(stock)
 
-        name = TICKER_NAMES.get(stock["ticker"], stock["ticker"])
+        # 基本面分析
+        fundamental = analyze_fundamental(ticker, name)
 
-        report_lines.append(f"股票名稱: {name}({stock['ticker']})")
-        report_lines.append(f"分析結果: {res}")
+        # 存進資料庫
+        combined = f"【技術面】\n{technical}\n\n【基本面】\n{fundamental}"
+        save_report(ticker, combined)
+
+        report_lines.append(f"\n{'='*30}")
+        report_lines.append(f"股票名稱：{name}（{ticker}）")
+        report_lines.append(f"\n【技術面分析】")
+        report_lines.append(technical)
+        report_lines.append(f"\n【基本面分析】")
+        report_lines.append(fundamental)
         report_lines.append("-" * 30)
 
     report_dir = "reports"
